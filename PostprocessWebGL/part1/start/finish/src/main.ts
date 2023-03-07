@@ -3,11 +3,18 @@ import materialVertexShaderSource from './MaterialVertexShader.glsl?raw';
 import materialFragmentShaderSource from './MaterialFragmentShader.glsl?raw';
 import luminanceVertexShaderSource from './LuminanceVertexShader.glsl?raw';
 import luminanceFragmentShaderSource from './LuminanceFragmentShader.glsl?raw';
+import * as dat from 'dat.gui';
 import { mat4 } from 'gl-matrix';
 
 
 let canvas: HTMLCanvasElement;
 let gl: WebGL2RenderingContext;
+
+const options = {
+  useFramebuffer: true,
+  renderBackground: true,
+  renderBackgroundToFramebuffer: true
+}
 
 // pink 
 const clearColor = { r: 1, g: 0.71, b: 0.76 }
@@ -28,6 +35,15 @@ let renderBufferTexture: WebGLTexture;
 let frameBuffer: WebGLFramebuffer;
 let postProcessProgram: WebGLProgram;
 let postProcessVAO: WebGLVertexArrayObject;
+
+function initGui()
+{
+  const gui = new dat.GUI();
+
+  gui.add(options, "useFramebuffer");
+  gui.add(options, "renderBackground");
+  gui.add(options, "renderBackgroundToFramebuffer");
+}
 
 function createWebGLProgram(vertexSource: string, fragmentSource: string): WebGLProgram 
 {
@@ -228,6 +244,12 @@ function setup()
   spritesSetup();
   framebufferSetup();
 
+  initGui();
+
+  // transparency
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
   // RENDER
   render();
 }
@@ -266,38 +288,51 @@ function drawScene()
   drawSprite(materialHuskyTexture, 300, 300);
 }
 
-function clearScreenBuffers() 
-{
-  // presentation color.
-  gl.clearColor(clearColor.r, clearColor.g, clearColor.b, 1);
-
-  // depth test, not used, but can be used if geoemtry that uses z coordinate is used.
-  gl.enable(gl.DEPTH_TEST);
-
-  // transparency
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-  // clear color
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-}
-
 function render() 
 {
-  clearScreenBuffers();
+  // if framebuffer is to be used
+  if (options.useFramebuffer)
+  {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
+  }
+  else 
+  {
+    // binds the screen buffer.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
 
-  // write into framebuffer. 
-  gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
+  // clear the buffer contents, and either use or not clear color.
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  if (options.renderBackground)
+  {
+    gl.clearColor(clearColor.r, clearColor.g, clearColor.b, 1);
+  }
+  else 
+  {
+    gl.clearColor(1,1,1,0);
+  }
+
+
   drawScene();
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-
-  gl.bindVertexArray(postProcessVAO);
-  gl.useProgram(postProcessProgram);
-  gl.disable(gl.DEPTH_TEST);
-  gl.bindTexture(gl.TEXTURE_2D, renderBufferTexture);
-  gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_BYTE, 0);
-
+  if (options.useFramebuffer)
+  {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    if (options.renderBackgroundToFramebuffer)
+    {
+      gl.clearColor(clearColor.r, clearColor.g, clearColor.b, 1);
+    }
+    else 
+    {
+      gl.clearColor(1,1,1,0);
+    }
+    gl.bindVertexArray(postProcessVAO);
+    gl.useProgram(postProcessProgram);
+    gl.disable(gl.DEPTH_TEST);
+    gl.bindTexture(gl.TEXTURE_2D, renderBufferTexture);
+    gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_BYTE, 0);
+  }
 
   requestAnimationFrame(() => render());
 }

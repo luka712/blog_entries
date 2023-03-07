@@ -22,9 +22,13 @@ let materialCatTexture: WebGLTexture;
 let materialHuskyTexture: WebGLTexture;
 
 // framebuffer,renderbuffer setup
+//@ts-ignore
 let renderBufferTexture: WebGLTexture;
+//@ts-ignore
 let frameBuffer: WebGLFramebuffer;
+//@ts-ignore
 let postProcessProgram: WebGLProgram;
+//@ts-ignore
 let postProcessVAO: WebGLVertexArrayObject;
 
 function createWebGLProgram(vertexSource: string, fragmentSource: string): WebGLProgram 
@@ -152,6 +156,10 @@ function setup()
   spritesSetup();
   framebufferSetup();
 
+  // transparency
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
   // RENDER
   render();
 }
@@ -194,25 +202,19 @@ function clearScreenBuffers()
 {
   // presentation color.
   gl.clearColor(clearColor.r, clearColor.g, clearColor.b, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
 
-  // depth test, not used, but can be used if geoemtry that uses z coordinate is used.
-  gl.enable(gl.DEPTH_TEST);
-
-  // transparency
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-  // clear color
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  // TODO:  
 }
 
 function render() 
 {
   clearScreenBuffers();
 
-  // write into framebuffer. 
   // TODO: bind framebuffer
+
   drawScene();
+
   // TODO: unbind framebuffer 
 
   // TODO: setup post process material
@@ -235,6 +237,7 @@ function createPostProcessVAO(): WebGLVertexArrayObject
 function createEmptyFrameBufferTexture(): WebGLTexture 
 {
   const texture = gl.createTexture()!;
+
   // TODO: fill texture details.
 
   return texture;
